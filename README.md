@@ -176,7 +176,7 @@ Enlace a dataset: https://docs.google.com/spreadsheets/d/12UQGro3dvy0mVCbDoYV4vY
 ---
 
 ## Instrucciones de Entrega
-- Crea un repositorio en GitHub con tu solución.  
+- Crea un fork de este repositorio en GitHub con tu solución.  
 - Incluye un archivo `README.md` explicando:  
   - Tu enfoque de resolución.  
   - Retos encontrados y cómo los resolviste.  
