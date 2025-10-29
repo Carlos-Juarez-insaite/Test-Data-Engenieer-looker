@@ -1,0 +1,149 @@
+view: analisis_ventas {
+  parameter: umbral_desempeño {
+    type: number
+    label: "Umbral de Margen Alto"
+    default_value: "100000"
+    description: "Define el umbral para clasificar a las ventas según su rendimiento"
+    allowed_value: {
+      label: "Umbral de margen Alto"
+      value: "100000"
+    }
+    allowed_value: {
+      label: "Umbral de margen medio"
+      value: "50000"
+    }
+    allowed_value: {
+      label: "Umbral de margen bajo"
+      value: "10000"
+    }
+  }
+  parameter: aplicar_proyeccion {
+    type: yesno
+    label: "Aplicar Proyección de Ingreso (+15%)"
+    default_value: "no"
+  }
+########################### DIMENSIONS ###################################
+    # Define your dimensions and measures here, like this:
+
+  dimension_group: fecha {
+    type: time
+    timeframes: [raw, date, week, month, quarter, year]
+    convert_tz: no
+    datatype: date
+    sql: ${TABLE}.fecha ;;
+  }
+    dimension: producto {
+    type: string
+    sql: ${TABLE}.producto ;;
+  }
+    dimension: region {
+    type: string
+    sql: ${TABLE}.region ;;
+  }
+    dimension: canal {
+    type: string
+    sql: ${TABLE}.canal ;;
+  }
+    dimension: cliente {
+    type: string
+    sql: ${TABLE}.cliente ;;
+  }
+
+
+  dimension: mes {
+    type: string
+    sql:  CASE EXTRACT(MONTH FROM ${TABLE}.fecha)
+    WHEN 1 THEN 'Enero'
+    WHEN 2 THEN 'Febrero'
+    WHEN 3 THEN 'Marzo'
+    WHEN 4 THEN 'Abril'
+    WHEN 5 THEN 'Mayo'
+    WHEN 6 THEN 'Junio'
+    WHEN 7 THEN 'Julio'
+    WHEN 8 THEN 'Agosto'
+    WHEN 9 THEN 'Septiembre'
+    WHEN 10 THEN 'Octubre'
+    WHEN 11 THEN 'Noviembre'
+    WHEN 12 THEN 'Diciembre'
+    END;;
+  }
+  dimension: mes_numero {
+    type: number
+    sql: EXTRACT(MONTH FROM ${TABLE}.fecha) ;; ##dimensión auxiliar para ordenar los meses de forma correcta y que aparezcan con sus nombres (Enero, Febrero etc.)
+  }
+
+
+  # Dimensión que clasifica dinámicamente el rendimiento usando el parámetro
+  dimension: rendimiento_segmento {
+    type: string
+    label: "Segmento de Rendimiento (Umbral: {% parameter umbral_desempeño %})"
+    sql: |
+      CASE
+        WHEN ${margen} >= {% parameter umbral_desempeño %} THEN 'Alto Rendimiento'
+        ELSE 'Rendimiento Estándar'
+      END
+      ;;
+      html: |
+      {% if value == 'Alto Rendimiento' %}
+        <span style="color: #4CAF50; font-weight: bold;">
+          {{ rendered_value }} <img src="https://img.freepik.com/premium-vector/golgen-trophy-cup-champion-award-winner-prize_53562-19904.jpg?semt=ais_hybrid&w=740&q=80" alt="Alto Rendimiento" height="14">
+        </span>
+      {% else %}
+        <span style="color: #FF9800;">
+          {{ rendered_value }} <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRGQARYK9tpBfHq10xo_CsQZ7lnVgJaOh2WkA&s" alt="Rendimiento Estándar" height="14">
+        </span>
+      {% endif %}
+      ;;
+  }
+
+################################# MEASURES #########################
+  measure: ingresos {
+    type: sum
+    sql: ${TABLE}.ingresos;;
+  }
+  measure: costos {
+    type: sum
+    sql: ${TABLE}.costos ;;
+    value_format: "#,##0.00"
+  }
+  measure: margen {
+    type: sum
+    sql: ${TABLE}.margen ;;
+    value_format: "#,##0.00"
+    html: |
+      {% if value >= umbral_desempeño._parameter_value %}
+        <img src="https://www.deacero.com/Themes/DeaceroThemeV3/Content/images/deacero-logo-inteligencia-industrial-en-2905.svg" alt="Rendimiento Sobresaliente" height="18">
+      {% endif %}
+      <span>{{ rendered_value }}</span>
+      ;;
+  }
+
+  measure: alto_rendimiento_conteo {
+    type: count
+    filters: {
+      field: rendimiento_segmento
+      value: "Alto Rendimiento"
+    }
+    label: "Conteo de Alto Rendimiento"
+  }
+  measure: margen_proyectado_condicional {
+    type: number
+    label: "Margen Total {% if aplicar_proyeccion._parameter_value == 'yes' %} (Proyectado) {% endif %}"
+    value_format: "$ #,##0.00"
+
+    sql: |
+      {% if aplicar_proyeccion._parameter_value == 'yes' %}
+        ${margen} * 1.15 # Aumenta el margen en un 15% para la proyección
+      {% else %}
+        ${margen}
+      {% endif %}
+      ;;
+    description: "Calcula el margen aplicando un 15% de incremento"
+  }
+  measure: clientes_unicos_conteo {
+    type: count_distinct
+    sql: ${cliente} ;;
+    label: "Conteo de Clientes Únicos"
+  }
+
+}
